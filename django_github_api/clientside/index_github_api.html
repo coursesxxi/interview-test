@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!-- Load the JS file -->
+  <script src="https://cdn.jsdelivr.net/npm/@gitgraph/js"></script>
+</head>
+
+<body>
+
+<div style="color: green ;background-color:aqua; border: 2px solid black;">
+  <h1> gitgraph.js & python & django & github api </h1>
+</div>
+
+<!-- DOM element textBox for url -->
+<!--
+-->
+<form action="#">
+  <br> 
+  
+  <div style="border: 1px solid black;">
+  <label for="fname">URL github:</label><br> 
+  <input id="url" type="text" size="100" name="url" value="FlatDigital/fullstack-interview-test" /> <br><br>
+  
+  <button type="submit" onclick="javascript:send()">call Django Github API to get branches for a github</button><br><br>
+  
+  <button type="submit" onclick="javascript:infoGitHubUrl()">call Django Github API INFO for a github</button><br><br>
+  
+  </div>
+  
+  <br>
+  <button type="submit" onclick="javascript:sendTest1()">call Django Github API to get branches test</button><br>
+
+  <button type="submit" onclick="javascript:sendTest2()">call gitgraph Example</button><br>
+
+  <button type="submit" onclick="javascript:clean()">clean graph-container</button><br>
+
+</form> 
+
+<p id='divi'> . </p>
+
+<p id="showData"></p>
+
+<!-- DOM element for graph -->
+<div id="graph-container"></div>
+
+
+<script type="text/javascript" language="javascript">
+
+function clean(){
+	//location.reload();
+	document.getElementById("graph-container").innerHTML = ""
+}
+
+function checkUrl(urlString){
+	var url_root = "https://github.com/"
+	var position = urlString.search(url_root);
+	var check = false
+	if (position == -1) {
+		// example : FlatDigital/fullstack-interview-test
+		if (isValidHttpUrl(url_root + urlString)) {
+			check = true
+		}
+	}
+	if (position == 0) {
+		// example : https://github.com/FlatDigital/fullstack-interview-test
+		if (isValidHttpUrl(urlString)) {
+			check = true
+		}
+	}
+	if (position > 0) {
+		// example : xyz https://github.com/FlatDigital/fullstack-interview-test
+		alert("URL no valid")
+	}
+	return check
+}
+
+function isValidHttpUrl(string) {
+  let url;
+  
+  try {
+    url = new URL(string);
+  } catch (_) {
+    return false;  
+  }
+
+  return url.protocol === "http:" || url.protocol === "https:";
+}
+
+function processGraph01(listElements) {
+	clean()
+	
+    // Get the graph container HTML element.
+    const graphContainer = document.getElementById("graph-container");
+
+    // Instantiate the graph.
+    const gitgraph = GitgraphJS.createGitgraph(graphContainer);
+
+    // Simulate git commands with Gitgraph API.
+    const master = gitgraph.branch("master");
+	
+    //master.commit("Initial commit");
+	master.commit({subject: "Initial commit", author: "author <author>"});
+
+	sizeObj = listElements.length
+	var i;
+	
+	for (i = 0; i < sizeObj; i++) {	  
+	  if (listElements[i] != "master") {
+		develop = master.branch(listElements[i]);
+		develop.commit({subject: "Initial commit", author: "author <author>"});
+	  }
+	}
+}
+
+function showResponse(xmlhttp) {
+    document.getElementById("divi").innerHTML = xmlhttp.statusText + ":" + xmlhttp.status + "<BR><textarea rows='8' cols='100'>" + xmlhttp.responseText+ "</textarea>";
+}
+function ProcessResponse(xmlhttp) {
+	showResponse(xmlhttp)
+    responseText = xmlhttp.responseText
+	
+	var obj_json = JSON.parse(responseText);
+	
+	obj_json = obj_json.replace(/'/g, '"');
+	listElements = JSON.parse(obj_json);
+	
+	processGraph01(listElements)
+}
+
+function isJsonString( jsonString ) {
+  let printError = function(error, explicit) {
+  console.log(`[${explicit ? 'EXPLICIT' : 'INEXPLICIT'}] ${error.name}: ${error.message}`);
+  }
+
+
+  try {
+      JSON.parse( jsonString );
+      return true; // It's a valid JSON format
+  } catch (e) {
+      return false; // It's not a valid JSON format
+  }
+
+}
+
+function ProcessResponseInfo(xmlhttp) {
+	showResponse(xmlhttp)
+	responseText = xmlhttp.responseText
+	
+	var myBooks = JSON.parse(responseText);
+	
+	document.getElementById("showData").innerHTML = "JSON Format: " + isJsonString(myBooks)
+
+	// EXTRACT VALUE FOR HTML HEADER. 
+	var col = [];
+	for (var i = 0; i < myBooks.length; i++) {
+		for (var key in myBooks[i]) {
+			if (col.indexOf(key) === -1) {
+				col.push(key);
+			}
+		}
+	}	
+	
+	// CREATE DYNAMIC TABLE.
+	var table = document.createElement("table");
+
+	// CREATE HTML TABLE HEADER ROW USING THE EXTRACTED HEADERS ABOVE.
+
+	var tr = table.insertRow(-1);                   // TABLE ROW.
+
+	for (var i = 0; i < col.length; i++) {
+		var th = document.createElement("th");      // TABLE HEADER.
+		th.innerHTML = col[i];
+		tr.appendChild(th);
+	}
+
+	// ADD JSON DATA TO THE TABLE AS ROWS.
+	for (var i = 0; i < myBooks.length; i++) {
+
+		tr = table.insertRow(-1);
+
+		for (var j = 0; j < col.length; j++) {
+			var tabCell = tr.insertCell(-1);
+			tabCell.innerHTML = myBooks[i][col[j]];
+		}
+	}
+
+	// FINALLY ADD THE NEWLY CREATED TABLE WITH JSON DATA TO A CONTAINER.
+        //var divContainer = document.getElementById("showData");
+        //divContainer.innerHTML = "";
+        //divContainer.appendChild(table);
+	
+}
+
+function send()
+{
+    var responseText = "."
+	var urlinput = document.getElementById('url').value
+	
+	if (checkUrl(urlinput)) {
+		var url_root = "https://github.com/"
+		urlinput = urlinput.replace(url_root,'');
+	
+		var xmlhttp = new XMLHttpRequest();
+		var url = "http://localhost:8000/branchesurl" + "?url=" + urlinput;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.onreadystatechange = function(response) {
+
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {	
+			ProcessResponse(xmlhttp);	
+		  }
+		};
+		xmlhttp.send();
+	}
+}
+
+function sendTest1()
+{
+    var responseText = "."
+	
+	var xmlhttp = new XMLHttpRequest();
+	var url = "http://localhost:8000/branches/";
+	xmlhttp.open("GET", url, true);
+	xmlhttp.onreadystatechange = function(response) {
+
+	  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {	
+		ProcessResponse(xmlhttp);	
+	  }
+	};
+	xmlhttp.send();
+}
+
+function sendTest2()
+{
+	listElements = ['branch-1', 'branch-2']
+	document.getElementById("divi").innerHTML = listElements
+	processGraph01(listElements)
+}
+
+function infoGitHubUrl()
+{
+    var responseText = "."
+	var urlinput = document.getElementById('url').value
+	
+	if (checkUrl(urlinput)) {
+		var url_root = "https://github.com/"
+		urlinput = urlinput.replace(url_root,'');
+	
+		var xmlhttp = new XMLHttpRequest();
+		var url = "http://localhost:8000/branchesprurl" + "?url=" + urlinput;
+		xmlhttp.open("GET", url, true);
+		xmlhttp.onreadystatechange = function(response) {
+
+		  if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {	
+			ProcessResponseInfo(xmlhttp);	
+		  }
+		};
+		xmlhttp.send();
+	}
+}
+
+</script>
+
+</body>
+</html>
